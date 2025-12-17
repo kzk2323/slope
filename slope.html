@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>スロープ傾斜角度計算</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+ 
+
+<style>
+
+  :root { --ok:#2b9348; --caution:#ee9b00; --danger:#d00000; --fg:#222; --bg:#fff; }
+
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+
+         color:var(--fg); background:var(--bg); margin:0; padding:16px; line-height:1.6; }
+
+  h1 { font-size:1.2rem; margin:0 0 12px; }
+
+  .card { border:1px solid #ddd; border-radius:12px; padding:12px; margin-bottom:12px; position:relative; z-index:0; }
+
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+
+  .field { flex:1 1 160px; }
+
+  label { font-weight:600; display:block; margin-bottom:6px; }
+
+  input, select { width:100%; font-size:1rem; padding:10px; border:1px solid #ccc; border-radius:8px; }
+
+  .hint { font-size:.9rem; color:#666; }
+
+  .btn {
+
+    width:100%; padding:12px; font-size:1rem; border:none; border-radius:10px;
+
+    background:#004aad; color:#fff; margin-top:8px; cursor:pointer;
+
+    position:relative; z-index:1;
+
+    -webkit-appearance: none; touch-action: manipulation;
+
+  }
+
+  .result { font-size:1.05rem; }
+
+  .badge { display:inline-block; padding:6px 10px; border-radius:999px; color:#fff; font-weight:700; }
+
+  .ok { background:var(--ok); } .caution { background:var(--caution); } .danger { background:var(--danger); }
+
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+
+  .footer { font-size:.85rem; color:#666; margin-top:10px; }
+
+</style>
+
+</head>
+
+<body>
+
+ 
+
+<h1>スロープ傾斜角度・勾配計算（長さ×高さ）</h1>
+
+<div class="card">
+
+  <div class="row">
+
+    <div class="field">
+
+      <label for="run">長さ（水平距離）</label>
+
+      <input id="run" type="number" inputmode="decimal" placeholder="例：200（cm）" />
+
+      <div class="hint">単位は cm または mm を選択できます</div>
+
+    </div>
+
+    <div class="field">
+
+      <label for="rise">高さ（段差）</label>
+
+      <input id="rise" type="number" inputmode="decimal" placeholder="例：20（cm）" />
+
+    </div>
+
+    <div class="field" style="flex:1 1 120px;">
+
+      <label for="unit">単位</label>
+
+      <select id="unit">
+
+        <option value="cm" selected>cm</option>
+
+        <option value="mm">mm</option>
+
+      </select>
+
+    </div>
+
+  </div>
+
+  <!-- フォールバックとして onclick も付与 -->
+
+  <button id="calcBtn" class="btn" type="button" onclick="window.__calc && window.__calc()">計算する</button>
+
+  <div id="out" class="result"></div>
+
+</div>
+
+ 
+
+<div class="card">
+
+  <strong>判定の目安（角度は小数点切り捨てで区分）</strong>
+
+  <ul style="margin-top:6px;">
+
+    <li><span class="badge ok">5°以下</span>：自力走行が可能な上限</li>
+
+    <li><span class="badge caution">6～10°</span>：介助者がいる場合の上限</li>
+
+    <li><span class="badge danger">11～15°</span>：介助者がいても困難レベル</li>
+
+    <li><span class="badge danger">16°以上</span>：危険を伴う</li>
+
+  </ul>
+
+  <div class="footer">※角度は概算。現場での安全確認・試走・情報共有を必ず実施してください。</div>
+
+</div>
+
+ 
+
+<script>
+
+(function(){
+
+  function isPositiveNumber(v){ return Number.isFinite(v) && v > 0; }
+
+ 
+
+  function calc(){
+
+    var runRaw = parseFloat(document.getElementById('run').value);
+
+    var riseRaw = parseFloat(document.getElementById('rise').value);
+
+    var unit = document.getElementById('unit').value;
+
+    var out = document.getElementById('out');
+
+ 
+
+    if(!isPositiveNumber(runRaw) || !isPositiveNumber(riseRaw)){
+
+      out.innerHTML = '<span style="color:#d00000;">長さ・高さを正の数で入力してください。</span>';
+
+      return;
+
+    }
+
+ 
+
+    var runCm = unit === 'mm' ? runRaw / 10 : runRaw;
+
+    var riseCm = unit === 'mm' ? riseRaw / 10 : riseRaw;
+
+ 
+
+    var angleDeg = Math.atan(riseCm / runCm) * 180 / Math.PI;
+
+    var angleDegFloor = Math.floor(angleDeg);
+
+    var gradePct = (riseCm / runCm) * 100;
+
+    var ratio = runCm / riseCm;
+
+ 
+
+    var band = '', cls = '';
+
+    if (angleDegFloor <= 5) { band = '5°以下（自力走行が可能な上限）'; cls = 'ok'; }
+
+    else if (angleDegFloor <= 10) { band = '6～10°（介助者がいる場合の上限）'; cls = 'caution'; }
+
+    else if (angleDegFloor <= 15) { band = '11～15°（困難レベル）'; cls = 'danger'; }
+
+    else { band = '16°以上（危険を伴う）'; cls = 'danger'; }
+
+ 
+
+    document.getElementById('out').innerHTML =
+
+      '<div class="grid">'
+
+      + '<div>傾斜角度（実数）：<strong>' + angleDeg.toFixed(1) + '°</strong></div>'
+
+      + '<div>傾斜角度（切り捨て）：<strong>' + angleDegFloor + '°</strong></div>'
+
+      + '<div>勾配（％）：<strong>' + gradePct.toFixed(1) + '%</strong></div>'
+
+      + '<div>勾配（比）：<strong>1:' + ratio.toFixed(1) + '</strong>（水平:' + runCm.toFixed(1) + 'cm / 高さ:' + riseCm.toFixed(1) + 'cm）</div>'
+
+      + '<div>判定：<span class="badge ' + cls + '">' + band + '</span></div>'
+
+      + '</div>';
+
+  }
+
+ 
+
+  // グローバルにフォールバック公開
+
+  window.__calc = calc;
+
+ 
+
+  function tryCalcIfReady(){
+
+    var a = parseFloat(document.getElementById('run').value);
+
+    var b = parseFloat(document.getElementById('rise').value);
+
+    if (isPositiveNumber(a) && isPositiveNumber(b)) calc();
+
+  }
+
+ 
+
+  // DOM準備後にイベント登録（クリック＋ポインタ）
+
+  document.addEventListener('DOMContentLoaded', function(){
+
+    var btn = document.getElementById('calcBtn');
+
+    btn.addEventListener('click', calc, { passive: true });
+
+    btn.addEventListener('pointerup', calc, { passive: true });
+
+ 
+
+    // 入力の自動計算
+
+    ['run','rise'].forEach(function(id){
+
+      var el = document.getElementById(id);
+
+      el.addEventListener('input', tryCalcIfReady);
+
+      el.addEventListener('change', tryCalcIfReady);
+
+    });
+
+    document.getElementById('unit').addEventListener('change', tryCalcIfReady);
+
+  });
+
+})();
+
+</script>
